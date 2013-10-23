@@ -1,0 +1,307 @@
+//
+//  EventViewController.m
+//  test
+//
+//  Created by 陈 忠杰 on 13-9-16.
+//  Copyright (c) 2013年 陈 忠杰. All rights reserved.
+//
+
+#import "EventViewController.h"
+#import "MsgModel.h"
+#import "DetailViewController.h"
+#import "EventManager.h"
+#import "OptionViewController.h"
+#import "CollectionViewController.h"
+#import "SettingViewController.h"
+#import "TableViewCommonCell.h"
+#import "ClassSelectViewController.h"
+#import "InputNameViewController.h"
+#import "EventOptionViewController.h"
+#import "DataSelectViewController.h"
+
+@interface EventViewController ()
+
+@end
+
+@implementation EventViewController
+
+- (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil
+{
+    self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
+    if (self) {
+        // Custom initialization
+    }
+    return self;
+}
+
+- (void)viewDidLoad
+{
+    [super viewDidLoad];
+	// Do any additional setup after loading the view.
+    
+    UIBarButtonItem *saveButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemSave target:self action:@selector(saveObject:)];
+    self.navigationItem.rightBarButtonItem = saveButton;
+    
+    NSString *plistPath = [[NSBundle mainBundle] pathForResource:@"WordList" ofType:@"plist"];
+    _titleDic = [[NSMutableDictionary alloc] initWithContentsOfFile:plistPath];
+    
+    [[SubscribeModel sharedModel] pushObserver:self];
+    
+    [[MsgModel sharedModel] sendMsg:2009 withData:nil];
+    
+    self.title = @"新建事件";
+    self.eventTitle = @"";
+}
+
+- (void)viewDidAppear:(BOOL)animated
+{
+    [self.tableView reloadData];
+}
+
+- (void)viewDidDisappear:(BOOL)animated
+{
+    //[[EventManager sharedEventManager] setClassId:0];
+    //[[EventManager sharedEventManager] setClassName:@""];
+    //[[EventManager sharedEventManager] setDesc:@""];
+}
+
+- (void)didReceiveMemoryWarning
+{
+    [super didReceiveMemoryWarning];
+    // Dispose of any resources that can be recreated.
+}
+
+- (void)saveObject:(id)sender
+{
+    NSString* strEventName = [[EventManager sharedEventManager] eventName];
+    if (!strEventName || [strEventName isEqualToString:@""])
+    {
+        UIAlertView *alert = [[[UIAlertView alloc] initWithTitle:@"" message:@"请输入事件名称" delegate:self cancelButtonTitle:@"OK" otherButtonTitles:nil] autorelease];
+        // optional - add more buttons:
+        [alert show];
+    }
+    else if(![[EventManager sharedEventManager] classId])
+    {
+        UIAlertView *alert = [[[UIAlertView alloc] initWithTitle:@"" message:@"请选择类型" delegate:self cancelButtonTitle:@"OK" otherButtonTitles:nil] autorelease];
+        // optional - add more buttons:
+        [alert show];
+    }
+    else
+    {
+        int _id = [[EventManager sharedEventManager] classId];
+        NSString* eventName = [[EventManager sharedEventManager] eventName];
+        NSString* desc = [[EventManager sharedEventManager] desc];
+        NSString* eventId = [[EventManager sharedEventManager] eventId];
+        NSDate* date = [[EventManager sharedEventManager] outRangeDate];
+        long time = (long)[date timeIntervalSince1970];
+        //    NSLog(@"%lld", time);
+        NSMutableDictionary * __data = [[NSMutableDictionary alloc] init];
+        [__data setValue:eventName forKey:@"sTitle"];
+        [__data setValue:desc forKey:@"sDescription"];
+        [__data setValue:@"" forKey:@"sPic"];
+        [__data setValue:@"" forKey:@"sVideo"];
+        [__data setValue:eventId forKey:@"event"];
+        NSString* classId = [NSString stringWithFormat:@"%d", _id];;
+        [__data setValue:classId forKey:@"classId"];
+        NSString* overTime = [NSString stringWithFormat:@"%ld", time];;
+        [__data setValue:overTime forKey:@"iOverTime"];
+        [[MsgModel sharedModel] sendMsg:2001 withData:__data];
+    }
+}
+
+-(void)receiveData:(DataVO *)data
+{
+    if(data.module == 2001)
+    {
+        NSNumber* result = [data.data objectForKey:@"result"];
+        if([result isEqual:[NSNumber numberWithInt:1]])
+        {
+            DetailViewController *show = [[DetailViewController alloc] init];
+            //[self.navigationController popViewControllerAnimated:YES];
+            [show release];
+            
+            NSDictionary* pDicNewEvent = [data.data objectForKey:@"newEvent"];
+            NSString* strId = [pDicNewEvent objectForKey:@"_id"];
+            [[EventManager sharedEventManager] setEventId:strId];
+            [self.navigationController popViewControllerAnimated:YES];
+//            UIAlertView* alert = [[[UIAlertView alloc] initWithTitle:@"" message:@"事件添加成功" delegate:self cancelButtonTitle:@"OK" otherButtonTitles: nil] autorelease];
+//            alert.tag = 1;
+//            [alert show];
+        }
+    }
+    else if(data.module == 2009)
+    {
+        NSNumber* result = [data.data objectForKey:@"result"];
+        if([result isEqual:[NSNumber numberWithInt:1]])
+        {
+            [[EventManager sharedEventManager] setEventId:[data.data objectForKey:@"_id"]];
+        }
+    }
+}
+
+#pragma mark - alerView
+- (void)alertView:(UIAlertView *)alertView clickedButtonAtIndex:(NSInteger)buttonIndex
+{
+    if (alertView.tag == 1)
+    {
+        [self.navigationController popViewControllerAnimated:YES];
+    }
+}
+#pragma mark - Table View
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView
+{
+    return 2;
+}
+
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
+{
+    if (section == 0) {
+        return 2;
+    }
+    else if (section == 1) {
+        return 2;
+    }
+    return 1;
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    TableViewCommonCell *cell;
+    cell = [tableView dequeueReusableCellWithIdentifier:@"CommonCell" forIndexPath:indexPath];
+    NSArray* arrayEvent = [_titleDic objectForKey:@"Event"];
+    cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+    //if (cell == nil)
+    {
+        //cell=[[[UITableViewCell alloc]initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"EventCell"] autorelease];
+        if (indexPath.section == 0 && indexPath.row == 0)
+        {
+            NSString* className = [[EventManager sharedEventManager] className];
+            cell.label2.text = className;
+        }
+        
+        if (indexPath.section == 0 && indexPath.row == 1)
+        {
+            cell.label2.text = [[EventManager sharedEventManager] eventName];
+        }
+        
+        if (indexPath.section == 1 && indexPath.row == 0)
+        {
+            NSDate* date = [[EventManager sharedEventManager] outRangeDate];
+            if (date)
+            {
+                NSDateFormatter *dateFormat1 = [[NSDateFormatter alloc]init];
+                [dateFormat1 setDateFormat:@"yyyy/MM/dd"];
+                NSDateFormatter *dateFormat2 = [[NSDateFormatter alloc]init];
+                [dateFormat2 setDateFormat:@"HH:mm:ss"];
+                
+                NSString* string1 = [dateFormat1 stringFromDate:date];
+                NSString* string2 = [dateFormat2 stringFromDate:date];
+                cell.label2.numberOfLines = 2;
+                cell.label2.text = [NSString stringWithFormat:@"%@\n%@  ", string1, string2];
+                //cell.label2.textAlignment = NSTextAlignmentCenter;
+            }
+        }
+    }
+    
+    NSString* title = [[arrayEvent objectAtIndex:indexPath.section] objectAtIndex:indexPath.row];
+    cell.label1.text = title;
+
+    return cell;
+}
+
+- (BOOL)tableView:(UITableView *)tableView canEditRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    // Return NO if you do not want the specified item to be editable.
+    return NO;
+}
+
+- (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)editingStyle forRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    if (editingStyle == UITableViewCellEditingStyleDelete)
+    {
+        
+        [tableView deleteRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationFade];
+    } else if (editingStyle == UITableViewCellEditingStyleInsert)
+    {
+        // Create a new instance of the appropriate class, insert it into the array, and add a new row to the table view.
+    }
+}
+
+/*
+ // Override to support rearranging the table view.
+ - (void)tableView:(UITableView *)tableView moveRowAtIndexPath:(NSIndexPath *)fromIndexPath toIndexPath:(NSIndexPath *)toIndexPath
+ {
+ }
+ */
+
+/*
+ // Override to support conditional rearranging of the table view.
+ - (BOOL)tableView:(UITableView *)tableView canMoveRowAtIndexPath:(NSIndexPath *)indexPath
+ {
+ // Return NO if you do not want the item to be re-orderable.
+ return YES;
+ }
+ */
+
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    if (indexPath.section == 2 && indexPath.row == 0)
+    {
+        UIStoryboard* storyboard = [UIStoryboard storyboardWithName:@"MainStoryboard_iPhone" bundle:nil];
+        OptionViewController *nextViewController =[storyboard instantiateViewControllerWithIdentifier:@"OptionBoard"];
+        [self.navigationController pushViewController:nextViewController animated:YES];
+    }
+    if (indexPath.section == 0 && indexPath.row == 0)
+    {
+        UIStoryboard* storyboard = [UIStoryboard storyboardWithName:@"MainStoryboard_iPhone" bundle:nil];
+        ClassSelectViewController *nextViewController =[storyboard instantiateViewControllerWithIdentifier:@"ClassSelect"];
+        //[nextViewController setSelectClassMode:YES];
+        [self.navigationController pushViewController:nextViewController animated:YES];
+    }
+    if (indexPath.section == 0 && indexPath.row == 1)
+    {
+        UIStoryboard* storyboard = [UIStoryboard storyboardWithName:@"MainStoryboard_iPhone" bundle:nil];
+        EventOptionViewController *nextViewController =[storyboard instantiateViewControllerWithIdentifier:@"EventOption"];
+        [self.navigationController pushViewController:nextViewController animated:YES];
+    }
+    if (indexPath.section == 1 && indexPath.row == 0)
+    {
+        UIStoryboard* storyboard = [UIStoryboard storyboardWithName:@"MainStoryboard_iPhone" bundle:nil];
+        DataSelectViewController *nextViewController =[storyboard instantiateViewControllerWithIdentifier:@"DataSelect"];
+        [self.navigationController pushViewController:nextViewController animated:YES];
+    }
+    [tableView deselectRowAtIndexPath:indexPath animated:YES];
+}
+
+-(CGFloat)tableView:(UITableView*)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    if (indexPath.section == 3) {
+        return 100.0;
+    }
+    return 44;
+}
+
+- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender
+{
+    if ([[segue identifier] isEqualToString:@"showDetail"])
+    {
+    }
+}
+
+#pragma mark - textField Delegate
+- (void)textFieldWithText:(UITextField *)textField
+{
+    switch (textField.tag) {
+        case 10:
+            self.eventTitle = textField.text;
+            break;
+        default:
+            break;
+    }
+}
+
+- (BOOL)textFieldShouldReturn:(UITextField *)textField {
+    [textField resignFirstResponder];
+    return YES;
+}
+@end

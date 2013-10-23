@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VariablesViewState
+   version = "1.0">
+   <ContextStates>
+      <ContextState
+         contextName = "-[MasterViewController tableView:cellForRowAtIndexPath:]:MasterViewController.m">
+         <PersistentStrings>
+            <PersistentString
+               value = "(NSString *)title">
+            </PersistentString>
+         </PersistentStrings>
+      </ContextState>
+   </ContextStates>
+</VariablesViewState>

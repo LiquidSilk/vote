@@ -1,0 +1,282 @@
+//
+//  EventViewController.m
+//  test
+//
+//  Created by 陈 忠杰 on 13-9-16.
+//  Copyright (c) 2013年 陈 忠杰. All rights reserved.
+//
+
+#import "EventViewController.h"
+#import "MsgModel.h"
+#import "DetailViewController.h"
+#import "EventManager.h"
+#import "OptionViewController.h"
+#import "CollectionViewController.h"
+#import "SettingViewController.h"
+#import "TableViewCommonCell.h"
+#import "ClassSelectViewController.h"
+#import "InputNameViewController.h"
+
+@interface EventViewController ()
+
+@end
+
+@implementation EventViewController
+
+- (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil
+{
+    self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
+    if (self) {
+        // Custom initialization
+    }
+    return self;
+}
+
+- (void)viewDidLoad
+{
+    [super viewDidLoad];
+	// Do any additional setup after loading the view.
+    
+    UIBarButtonItem *saveButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemSave target:self action:@selector(saveObject:)];
+    self.navigationItem.rightBarButtonItem = saveButton;
+    
+    NSString *plistPath = [[NSBundle mainBundle] pathForResource:@"WordList" ofType:@"plist"];
+    _titleDic = [[NSMutableDictionary alloc] initWithContentsOfFile:plistPath];
+    
+    [[SubscribeModel sharedModel] pushObserver:self];
+    
+    self.title = @"新建事件";
+    self.eventTitle = @"";
+}
+
+- (void)viewDidAppear:(BOOL)animated
+{
+    [self.tableView reloadData];
+}
+
+- (void)viewDidDisappear:(BOOL)animated
+{
+    //[[EventManager sharedEventManager] setClassId:0];
+    //[[EventManager sharedEventManager] setClassName:@""];
+    //[[EventManager sharedEventManager] setDesc:@""];
+}
+
+- (void)didReceiveMemoryWarning
+{
+    [super didReceiveMemoryWarning];
+    // Dispose of any resources that can be recreated.
+}
+
+- (void)saveObject:(id)sender
+{
+    if ([[[EventManager sharedEventManager] eventName] isEqualToString:@""])
+    {
+        UIAlertView *alert = [[[UIAlertView alloc] initWithTitle:@"" message:@"请输入事件名称" delegate:self cancelButtonTitle:@"OK" otherButtonTitles:nil] autorelease];
+        // optional - add more buttons:
+        [alert show];
+    }
+    else if(![[EventManager sharedEventManager] classId])
+    {
+        UIAlertView *alert = [[[UIAlertView alloc] initWithTitle:@"" message:@"请选择类型" delegate:self cancelButtonTitle:@"OK" otherButtonTitles:nil] autorelease];
+        // optional - add more buttons:
+        [alert show];
+    }
+    else
+    {
+        int _id = [[EventManager sharedEventManager] classId];
+        NSString* eventName = [[EventManager sharedEventManager] eventName];
+        NSString* desc = [[EventManager sharedEventManager] desc];
+        NSMutableDictionary * __data = [[NSMutableDictionary alloc] init];
+        [__data setValue:eventName forKey:@"sTitle"];
+        [__data setValue:desc forKey:@"sDescription"];
+        [__data setValue:@"" forKey:@"sPic"];
+        [__data setValue:@"" forKey:@"sVideo"];
+        [__data setValue:@"" forKey:@"iOverTime"];
+        NSString* classId = [NSString stringWithFormat:@"%d", _id];;
+        [__data setValue:classId forKey:@"classId"];
+        [[MsgModel sharedModel] sendMsg:2001 withData:__data];
+    }
+}
+
+-(void)receiveData:(DataVO *)data
+{
+    if(data.module == 2001)
+    {
+        NSNumber* result = [data.data objectForKey:@"result"];
+        if([result isEqual:[NSNumber numberWithInt:1]])
+        {
+            DetailViewController *show = [[DetailViewController alloc] init];
+            //[self.navigationController popViewControllerAnimated:YES];
+            [show release];
+            
+            NSDictionary* pDicNewEvent = [data.data objectForKey:@"newEvent"];
+            NSString* strId = [pDicNewEvent objectForKey:@"_id"];
+            [[EventManager sharedEventManager] setEventId:strId];
+        }
+    }
+}
+
+#pragma mark - Table View
+
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView
+{
+    return 3;
+}
+
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
+{
+    if (section == 0) {
+        return 2;
+    }
+    else if (section == 1) {
+        return 3;
+    }
+    return 1;
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    TableViewCommonCell *cell;
+    cell = [tableView dequeueReusableCellWithIdentifier:@"CommonCell" forIndexPath:indexPath];
+    NSArray* arrayEvent = [_titleDic objectForKey:@"Event"];
+    cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+    //if (cell == nil)
+    {
+        //cell=[[[UITableViewCell alloc]initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"EventCell"] autorelease];
+        if (indexPath.section == 0 && indexPath.row == 0)
+        {
+            NSString* className = [[EventManager sharedEventManager] className];
+            cell.label2.text = className;
+//            UILabel* label = [[UILabel alloc] initWithFrame:CGRectMake(90, 7, 160, 30)];
+//            NSString* className = [[EventManager sharedEventManager] className];
+//            label.backgroundColor = [UIColor clearColor];
+//            label.font = [UIFont fontWithName:@"TrebuchetMS-Bold" size:18];
+//            label.text = className;
+//            [cell.contentView addSubview:label];
+        }
+        
+        if (indexPath.section == 0 && indexPath.row == 1)
+        {
+            cell.label2.text = [[EventManager sharedEventManager] desc];
+        }
+        
+        if (indexPath.section == 1 && indexPath.row == 0)
+        {
+            NSString* eventName = [[EventManager sharedEventManager] eventName];
+            cell.label2.text = eventName;
+//            cell.accessoryType = UITableViewCellAccessoryNone;
+//            // 自定义文本信息1
+//            UITextField *label1 = [[UITextField alloc] initWithFrame:CGRectMake(90, 10, 160, 30)];
+//            NSString* title1 = [arrayEvent objectAtIndex:0];
+//            label1.tag = indexPath.section * 10 + indexPath.row;
+//            label1.backgroundColor = [UIColor clearColor];
+//            label1.returnKeyType = UIReturnKeyDone;
+//            label1.font = [UIFont fontWithName:@"TrebuchetMS-Bold" size:18];
+//            label1.delegate = self;
+//            [cell.contentView addSubview:label1];
+//            [label1 addTarget:self action:@selector(textFieldWithText:) forControlEvents:UIControlEventEditingChanged];
+        }
+    }
+    
+    NSString* title = [[arrayEvent objectAtIndex:indexPath.section] objectAtIndex:indexPath.row];
+    cell.label1.text = title;
+
+    return cell;
+}
+
+- (BOOL)tableView:(UITableView *)tableView canEditRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    // Return NO if you do not want the specified item to be editable.
+    return NO;
+}
+
+- (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)editingStyle forRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    if (editingStyle == UITableViewCellEditingStyleDelete)
+    {
+        
+        [tableView deleteRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationFade];
+    } else if (editingStyle == UITableViewCellEditingStyleInsert)
+    {
+        // Create a new instance of the appropriate class, insert it into the array, and add a new row to the table view.
+    }
+}
+
+/*
+ // Override to support rearranging the table view.
+ - (void)tableView:(UITableView *)tableView moveRowAtIndexPath:(NSIndexPath *)fromIndexPath toIndexPath:(NSIndexPath *)toIndexPath
+ {
+ }
+ */
+
+/*
+ // Override to support conditional rearranging of the table view.
+ - (BOOL)tableView:(UITableView *)tableView canMoveRowAtIndexPath:(NSIndexPath *)indexPath
+ {
+ // Return NO if you do not want the item to be re-orderable.
+ return YES;
+ }
+ */
+
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    if (indexPath.section == 2 && indexPath.row == 0)
+    {
+        UIStoryboard* storyboard = [UIStoryboard storyboardWithName:@"MainStoryboard_iPhone" bundle:nil];
+        OptionViewController *nextViewController =[storyboard instantiateViewControllerWithIdentifier:@"OptionBoard"];
+        [self.navigationController pushViewController:nextViewController animated:YES];
+    }
+    if (indexPath.section == 0 && indexPath.row == 0)
+    {
+        UIStoryboard* storyboard = [UIStoryboard storyboardWithName:@"MainStoryboard_iPhone" bundle:nil];
+        ClassSelectViewController *nextViewController =[storyboard instantiateViewControllerWithIdentifier:@"ClassSelect"];
+        //[nextViewController setSelectClassMode:YES];
+        [self.navigationController pushViewController:nextViewController animated:YES];
+    }
+    if (indexPath.section == 0 && indexPath.row == 1)
+    {
+        UIStoryboard* storyboard = [UIStoryboard storyboardWithName:@"MainStoryboard_iPhone" bundle:nil];
+        SettingViewController *nextViewController =[storyboard instantiateViewControllerWithIdentifier:@"EventDesc"];
+        [self.navigationController pushViewController:nextViewController animated:YES];
+    }
+    if (indexPath.section == 1 && indexPath.row == 0)
+    {
+        UIStoryboard* storyboard = [UIStoryboard storyboardWithName:@"MainStoryboard_iPhone" bundle:nil];
+        InputNameViewController *nextViewController =[storyboard instantiateViewControllerWithIdentifier:@"InputName"];
+        [self.navigationController pushViewController:nextViewController animated:YES];
+    }
+    [tableView deselectRowAtIndexPath:indexPath animated:YES];
+}
+
+-(CGFloat)tableView:(UITableView*)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    if (indexPath.section == 3) {
+        return 100.0;
+    }
+    return 44;
+}
+
+- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender
+{
+    if ([[segue identifier] isEqualToString:@"showDetail"])
+    {
+    }
+}
+
+#pragma mark - textField Delegate
+- (void)textFieldWithText:(UITextField *)textField
+{
+    switch (textField.tag) {
+        case 10:
+            self.eventTitle = textField.text;
+            break;
+        default:
+            break;
+    }
+}
+
+- (BOOL)textFieldShouldReturn:(UITextField *)textField {
+    [textField resignFirstResponder];
+    return YES;
+}
+@end

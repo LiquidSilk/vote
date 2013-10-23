@@ -1,0 +1,79 @@
+//
+//  ClassSelectViewController.m
+//  test
+//
+//  Created by 陈 忠杰 on 13-9-23.
+//  Copyright (c) 2013年 陈 忠杰. All rights reserved.
+//
+
+#import "ClassSelectViewController.h"
+#import "MsgModel.h"
+#import "EventManager.h"
+
+@interface ClassSelectViewController ()
+
+@end
+
+@implementation ClassSelectViewController
+
+- (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil
+{
+    self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
+    if (self) {
+        // Custom initialization
+    }
+    return self;
+}
+
+- (void)viewDidLoad
+{
+    [super viewDidLoad];
+	// Do any additional setup after loading the view.
+    
+    [[SubscribeModel sharedModel] pushObserver:self];
+    
+    NSMutableDictionary * __data = [[NSMutableDictionary alloc] init];
+    int _curClassId = [[EventManager sharedEventManager] topId];
+    NSString* classId = [NSString stringWithFormat:@"%d", _curClassId];
+    [__data setValue:classId forKey:@"topClass"];
+    [[MsgModel sharedModel] sendMsg:3002 withData:__data];
+}
+
+-(void)receiveData:(DataVO *)data
+{
+    if(data.module == 3002)
+    {
+        NSNumber* result = [data.data objectForKey:@"result"];
+        if([result isEqual:[NSNumber numberWithInt:1]])
+        {
+            _ClassIdArray = [data.data objectForKey:@"configs"];
+            [self.selectPicker reloadData];
+        }
+    }
+}
+
+- (void)didReceiveMemoryWarning
+{
+    [super didReceiveMemoryWarning];
+    // Dispose of any resources that can be recreated.
+}
+
+
+-(NSInteger)numberOfComponentsInPickerView:(UIPickerView *)pickerView
+{
+    return 1;
+}
+-(NSInteger) pickerView:(UIPickerView *)pickerView numberOfRowsInComponent:(NSInteger)component
+{
+    return _ClassIdArray.count;
+}
+-(NSString*) pickerView:(UIPickerView *)pickerView titleForRow:(NSInteger)row forComponent:(NSInteger)component
+{
+    return [[_ClassIdArray objectAtIndex:row] objectForKey:@"classname"];
+}
+
+- (void)pickerView:(UIPickerView *)pickerView didSelectRow:(NSInteger)row inComponent:(NSInteger)component
+{
+    int a = row;
+}
+@end

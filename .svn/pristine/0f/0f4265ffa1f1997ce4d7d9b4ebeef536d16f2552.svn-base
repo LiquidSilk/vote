@@ -1,0 +1,102 @@
+//
+//  HomeViewController.m
+//  test
+//
+//  Created by 陈 忠杰 on 13-9-21.
+//  Copyright (c) 2013年 陈 忠杰. All rights reserved.
+//
+
+#import "HomeViewController.h"
+#import "CollectionViewController.h"
+#import "MsgModel.h"
+#import "EventManager.h"
+
+@interface HomeViewController ()
+
+@end
+
+@implementation HomeViewController
+
+- (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil
+{
+    self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
+    if (self) {
+        // Custom initialization
+    }
+    return self;
+}
+
+- (void)viewDidLoad
+{
+    [super viewDidLoad];
+    
+    [[SubscribeModel sharedModel] pushObserver:self];
+    [[MsgModel sharedModel] sendMsg:3001 withData:nil];
+	// Do any additional setup after loading the view.
+}
+
+- (void)viewDidAppear:(BOOL)animated
+{
+    [[self navigationController] setNavigationBarHidden:YES animated:YES];
+}
+
+- (void)didReceiveMemoryWarning
+{
+    [super didReceiveMemoryWarning];
+    // Dispose of any resources that can be recreated.
+}
+
+-(void)receiveData:(DataVO *)data
+{
+    if(data.module == 3001)
+    {
+        NSNumber* result = [data.data objectForKey:@"result"];
+        if([result isEqual:[NSNumber numberWithInt:1]])
+        {
+            _dictClass1 = [data.data objectForKey:@"configs"];
+            
+            NSDictionary* _dict;
+            _dict = [_dictClass1 objectForKey:@"1"];
+            self.label1.text = [_dict objectForKey:@"className"];
+            _dict = [_dictClass1 objectForKey:@"2"];
+            self.label2.text = [_dict objectForKey:@"className"];
+            _dict = [_dictClass1 objectForKey:@"3"];
+            self.label3.text = [_dict objectForKey:@"className"];
+            _dict = [_dictClass1 objectForKey:@"4"];
+            self.label4.text = [_dict objectForKey:@"className"];
+            _dict = [_dictClass1 objectForKey:@"5"];
+            self.label5.text = [_dict objectForKey:@"className"];
+            
+        }
+    }
+}
+
+-(IBAction)buttonTestOnClick:(id)sender
+{
+    UIButton* btn = (UIButton*)sender;
+    int tag = btn.tag;
+    NSString* strIndex = [NSString stringWithFormat:@"%d", tag];
+    NSDictionary* _dict	= [_dictClass1 objectForKey:strIndex];
+    NSString* _id = [_dict objectForKey:@"class_id"];
+    _curClassId = [_id integerValue];
+}
+
+- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender
+{
+    //if ([[segue identifier] isEqualToString:@"showDetail"])
+    {
+        CollectionViewController* view = (CollectionViewController*)[segue destinationViewController];
+        [[EventManager sharedEventManager] setTopId:_curClassId];
+        [view setClassId:_curClassId];
+        [view setSelectClassMode:NO];
+        if (_curClassId == 1)
+        {
+            [[EventManager sharedEventManager] setShowAddBtn:YES];
+        }
+        else
+        {
+            [[EventManager sharedEventManager] setShowAddBtn:NO];
+        }
+    }
+}
+@end
